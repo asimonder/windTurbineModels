@@ -1,0 +1,242 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2010-2021 OpenCFD Ltd.
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+                            | Copyright (C) 2021 Asim Onder
+-------------------------------------------------------------------------------
+License
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+Class
+    Foam::fv::windTurbineADM
+
+Group
+    grpFvOptionsSources
+
+Description
+    Actuation disk model
+
+
+Usage
+    Example usage:
+    \verbatim
+    fields          (U);        // names of fields to apply source
+    diskDir         (1 0 0);   // disk direction
+    diskCenter      (400 100 500);    //location of the center 
+    Cp              0.1;        // power coefficient
+    Ct              0.5;        // thrust coefficient
+    D               100;        // rotor diameter
+    epsilon         10; // filter size
+    \endverbatim
+
+
+SourceFiles
+    windTurbineADM.C
+    windTurbineADMTemplates.C
+
+\*---------------------------------------------------------------------------*/
+
+#ifndef windTurbineADM_H
+#define windTurbineADM_H
+
+#include "cellSetOption.H"
+#include "OFstream.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+namespace fv
+{
+
+/*---------------------------------------------------------------------------*\
+                     Class windTurbineADM Declaration
+\*---------------------------------------------------------------------------*/
+
+class windTurbineADM
+:
+    public cellSetOption
+{
+
+protected:
+
+    // Protected data
+
+        //- Disk area normal
+        vector diskDir_;
+
+        //- Power coefficient
+        scalar Cp_;
+
+        //- Thrust coefficient
+        scalar Ct_;
+
+        //- Disk center
+        point diskCenter_;
+
+        //- Disk diameter
+        scalar D_;
+
+        //- Filter size at each direction
+        scalar epsilon_;
+
+        //- Power
+        scalar Pow_;
+
+        //- Weighting function
+        Field<scalar> GW_;
+
+        //- Output file
+        string turbineDir_;
+
+
+private:
+
+    // Private Member Functions
+
+        //- Check data
+        void checkData() const;
+
+        //- Add resistance to the UEqn
+        template<class RhoFieldType>
+        void addWindTurbineADMAxialInertialResistance
+        (
+            vectorField& Usource,
+            const labelList& cells,
+            const scalarField& V,
+            const RhoFieldType& rho,
+            const vectorField& U
+        ) const;
+
+        //- No copy construct
+        windTurbineADM(const windTurbineADM&) = delete;
+
+        //- No copy assignment
+        void operator=(const windTurbineADM&) = delete;
+
+
+public:
+
+    //- Runtime type information
+    TypeName("windTurbineADMSource");
+
+
+    // Constructors
+
+        //- Construct from components
+        windTurbineADM
+        (
+            const word& name,
+            const word& modelType,
+            const dictionary& dict,
+            const fvMesh& mesh
+        );
+
+
+    //- Destructor
+    virtual ~windTurbineADM() = default;
+
+
+    // Member Functions
+
+        // Access
+
+            //- Return Cp
+            scalar Cp() const
+            {
+                return Cp_;
+            }
+
+            //- Return Ct
+            scalar Ct() const
+            {
+                return Ct_;
+            }
+
+            //- Normal disk direction
+            const vector& diskDir() const
+            {
+                return diskDir_;
+            }
+
+            //- Disk diameter
+            scalar diskDiameter() const
+            {
+                return D_;
+            }
+
+            //- Disk diameter
+            scalar epsilon() const
+            {
+                return epsilon_;
+            }
+
+            //- Power
+            scalar power() const
+            {
+                return Pow_;
+            }
+
+
+         // Add explicit and implicit contributions
+
+            //- Source term to momentum equation
+            virtual void addSup
+            (
+                fvMatrix<vector>& eqn,
+                const label fieldi
+            );
+
+            //- Source term to compressible momentum equation
+            virtual void addSup
+            (
+                const volScalarField& rho,
+                fvMatrix<vector>& eqn,
+                const label fieldi
+            );
+
+        //Gaussian filter
+        void calculateGaussianWeights();
+
+        // IO
+            //- Read dictionary
+            virtual bool read(const dictionary& dict);
+
+        //Initialize IO
+  void initPowerFile();
+  //- Set power
+  //void setPower(const scalar& Pow); 
+
+};
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace fv
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//#ifdef NoRepository
+//    #include "windTurbineADMTemplates.C"
+//#endif
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
+
+// ************************************************************************* //

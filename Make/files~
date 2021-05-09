@@ -1,0 +1,3 @@
+windTurbineADM/windTurbineADM.C
+
+LIB = $(FOAM_USER_LIBBIN)/libWindEnergy
